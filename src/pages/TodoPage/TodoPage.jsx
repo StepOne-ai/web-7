@@ -1,152 +1,146 @@
-import { Component } from "react";
-import axios from "axios";
+import { Component } from 'react'
+
+// Импорт другой компоненты
+import { Deletable } from '../../widgets/Deletable/Deletable';
 
 // Импорт файла со стилями
-import "./style.css";
+import './style.css'
 
 // Страничка туду
 export class TodoPage extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      count: 0,
-      query: "",
-      hello: "",
-    };
-  }
+    constructor(props) {
+        super(props);
 
-  render() {
-    return (
-      <div className="todo-page">
-        <h1>Query</h1>
-        <input
-          type="text"
-          placeholder="Your name..."
-          onChange={this.#handleQueryChange.bind(this)}
-        />
-        <h2 id="query">{this.state.query}</h2>
-        <button onClick={this.#handleQueryGet.bind(this)}>Send</button>
+        // Инициализируем состояние страницы
+        this.state = {
+            // Массив тудушек
+            todos: [],
 
-        <br />
-        <hr />
+            // Флаг, указывающий, что идет процесс загрузки данных
+            isLoading: true
+        };
+    }
 
-        <h2>Count: {this.state.count}</h2>
-        <input id="count" type="number" placeholder="Count..." />
-        <br />
-        <br />
-        <button onClick={this.#handleCountChange.bind(this)}>Get</button>
-        <button onClick={this.#handleCountChangePost.bind(this)}>Post</button>
+    // Биндим контекст this. Вынесли bind за пределы метода render, чтобы не пересоздавать
+    // объект функции с привязанным контекстом для каждой todo из массива. Такой подход передачи
+    // пропсов так же является правильным и с точки зрения оптимизаций react
+    // Подробнее про key-проп https://www.youtube.com/watch?v=OtAlPwW8DNU&t=409s
+    delete = this.#handlerTodoDelete.bind(this)
 
-        <br />
-        <hr />
+    // Метод жизненного цикла, который вызывается один раз для компоненты после ее вмонтирования
+    componentDidMount() {
+        // Асинхронный вызов получения данных тудушек. Возвращает объект Promise, для которого
+        // в случае успешного завершения запроса вызовется обработчик переданный в метод then
+        fetch('https://jsonplaceholder.typicode.com/todos')
+            // Вызов обработчика, который парсит тело ответа. Так как метод json является асинхронным (возвращает Promise),
+            // для него необходимо определить обработчик с помощью повторного вызова метода then
+            .then((response) => response.json())
+            // Стрелочная функция на вход принимает уже обработанное тело ответа
+            .then((todos) => {
 
-        <h1>Hello</h1>
-        <button onClick={this.#handleHelloClick.bind(this)}>Click</button>
-        <h2>{this.state.hello}</h2>
-      </div>
-    );
-  }
+                // Обновляем состояние страницы
+                this.setState({
+                    todos: todos,
 
-  #handleQueryChange(event) {
-    this.setState({
-      query: event.target.value,
-    });
-  }
+                    // Сбрасываем флаг из loading
+                    isLoading: false
+                });
+            })
+            // Обработчик на тот случай, если асинхронный вызов по каким-то причином завершился с ошибкой,
+            // например, сервер не доступен
+            .catch(() => {
+                console.log('Произошла ошибка')
+            });
+    }
 
-  #handleCountChange(event) {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get("http://127.0.0.1:8081/count");
-        console.log(response.data.count); // LES GOOOO IT WORKS
-        this.setState({
-          count: response.data.count,
-        });
-      } catch (error) {
-        console.log(error);
-      }
-    };
+    render() {
+        return (
+            <div className='todo-page'>
+                <h2>Todo page</h2>
 
-    fetchData();
+                {/* // if-else отрисовка */}
+                {this.state.isLoading && (
+                    <div className='loader'>
+                        Загрузка...
+                    </div>
+                ) || (
+                    // Метод map позволяет перебрать массив, и на ее основе сформировать новый массив
+                    // В данном случае формируем массив JSX-объектов. Метод map принимает функцию-обработчик,
+                    // которая принимает очередной элемент и индекс этого элемента 
+                    this.state.todos.map((todo, index) => {
+                        return (
+                            // Компонента, которая добавляет элементу todo функционал удаления.
+                            // Внутрь JSX-объекта можно передать другой JSX-объект или список объектов.
+                            // Эти объекты будут записаны в props.children
+                            <Deletable
+                                title={todo.title}
+                                id={todo.id}
+                                // Передаем обработчик удаления
+                                deleteHandler={this.delete}
 
-    this.setState({
-      count:
-        this.state.count + parseInt(document.getElementById("count").value),
-    });
-  }
-
-  #handleHelloClick(event) {
-    const fetchData = async () => {
-      try {
-        const response = await axios.post("http://127.0.0.1:8082/get", {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-        console.log(response.data); // LES GOOOO IT WORKS
-        this.setState({
-          hello: response.data,
-        });
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchData();
-  }
-
-  #handleCountChangePost(event) {
-    const dataToSend = {
-      count: parseInt(document.getElementById("count").value),
-    };
-    const fetchData = async () => {
-      try {
-        const response = await axios.post(
-          "http://127.0.0.1:8081/count",
-          dataToSend,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
+                                // Подробнее про key-проп https://www.youtube.com/watch?v=OtAlPwW8DNU&t=409s
+                                key={todo.id}>
+                                    <div className='todo'>
+                                        <input
+                                            type='checkbox'
+                                            // Осуществляем контроль отображения компоненты
+                                            checked={todo.completed}
+                                            onChange={this.#handleCompletedChange.bind(this, index)}
+                                            // В завимисоти от состояния меняет CSS-стили
+                                        /> <span style={{ color: todo.completed ? 'green' : 'red' }}>{todo.title}</span>
+                                    </div>
+                            </Deletable>
+                        );
+                    })
+                )}
+            </div>
         );
-        console.log(response.data.count); // LES GOOOO IT WORKS
+
+    }
+
+    #handleCompletedChange(index) {
+        // Документация реакт по обновлению состояния списка https://react.dev/learn/updating-arrays-in-state
+        // Правильное обновление состояния сложных объект подразумевает, что мы должны изменить ссылку на сложный
+        // объект, иначе могут возникнуть различные проблемы с перерисовкой приложения. Обычно react-разработчики стараются
+        // оптимизировать количество перерисовок компонент, сравнивая предыдущие и текущие пропсы. Сравнение объектов в JS
+        // является поверхностным, то есть он сравнивает только ссылки на равенство. Если мы напрямую будем мутировать this.state.todos,
+        // и, например, у нас бы была оптимизированная компонента TodosList, которая на вход принимала бы массив todos, то приложение бы не обновлялось,
+        // даже если бы мы изменили хотя бы один объект в массиве. Но ссылка на сходный массив не изменилась, поэтому перерисовки интефейса не произойдет
+
+        // Правильным подходом является создание нового массива на основе данных сещствующего массива. Массивы в JS хранят ссылки на объекты.
+        // Вызов метода slice позволит создать новый массив на основе старого, путем копирования ссылок на объекты, то есть копирование здесь поверхностное,
+        // но с точки зрения работы с состоянием реакта мы все сделали правильно, поскольку мы не изменяем исходный объект, а создаем на его основе новый
+        // Такая здесь парадигма :)
+
+        // Очень хороший видеоролик, который показывает как правильно работать со сложным состоянием: https://www.youtube.com/watch?v=a2DkRBnp4ns
+
+        // Так же новые объекты массива создают методы map и filter. Их тоже можно использовать для создания нового объекта массива
+        // (в зависимости от задачи: отфильтровать массив или на основе существующего массива обработать каждый элемент и получить новый массив)
+        const updatedTodos = this.state.todos.slice();
+
+        // Здесь так же приведен объект, как правильно создавать новый объект на основе существующего.
+        // "..." это spread-оператор или деструктуризация, которая позволяет разложить все свойства объекта и на их основе сконструировать новый объект.
+        // Порядок при этом важен. ```completed: !updatedTodos[index].completed``` должно идти позже spread, иначе для нового объекта todo свойство completed
+        // будет взято из старого объекта
+        updatedTodos[index] = {
+            ...updatedTodos[index],
+            completed: !updatedTodos[index].completed
+        }
+
         this.setState({
-          count: response.data.count,
+            todos: updatedTodos
         });
-      } catch (error) {
-        console.log(error);
-      }
-    };
+    }
 
-    fetchData();
-  }
+    #handlerTodoDelete(id) {
+        // Реализуем удаление элемента с помощью метода filter, который возвращает новый массив, состоящий из элементов,
+        // прошедших фильтрацию
+        const updatedTodos = this.state.todos.filter((todo) => {
+            return todo.id !== id;
+        })
 
-  #handleQueryGet(event) {
-    const query = this.state.query;
-    const params = {
-      name: query,
-    };
-
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(
-          "http://127.0.0.1:8083/api/user",
-          { params },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
-        );
-        console.log(response.data);
         this.setState({
-          query: response.data,
+            todos: updatedTodos
         });
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchData();
-  }
+    }
 }
